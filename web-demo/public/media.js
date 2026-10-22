@@ -281,9 +281,17 @@ async function sampleTone(an, ctx) {
   return best;
 }
 
+// Seconds the element really played. currentTime is not enough: a looping element restarts at 0.
+function playedSeconds(el) {
+  let sum = 0;
+  for (let i = 0; i < el.played.length; i++) sum += el.played.end(i) - el.played.start(i);
+  return sum;
+}
+
 function judgeTone(t, el) {
-  const played = el.currentTime > 0.1;
-  const line = `peak=${t.peak.toFixed(4)} rms=${t.rms.toFixed(4)} pitch≈${Math.round(t.hz)} Hz, currentTime=${el.currentTime.toFixed(2)} s`;
+  const playedFor = playedSeconds(el);
+  const played = playedFor > 0.1;
+  const line = `peak=${t.peak.toFixed(4)} rms=${t.rms.toFixed(4)} pitch≈${Math.round(t.hz)} Hz, played ${playedFor.toFixed(2)} s`;
   if (t.peak > 0.01) return { status: "read", html: `Got audio samples: ${line}.${Math.abs(t.hz - TONE_HZ) < 40 ? " This is the known 440 Hz tone." : ""}` };
   if (!played) return { status: "noplay", html: `The element did not play, so the zeros prove nothing. ${line}.` };
   return { status: "zero", html: `The element played, but every sample is 0: ${line}.\nThis counts as blocked only if the same-origin control gives the tone.` };
