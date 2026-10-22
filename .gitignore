@@ -1,0 +1,11 @@
+build/
+.gradle/
+local.properties
+.kotlin/
+xcuserdata/
+
+# Raw device logs: they hold device IDs and local paths.
+results/**/logcat.txt
+results/**/instrument.txt
+results/**/host.log
+results/**/xcodebuild.log

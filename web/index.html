@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Host image playground</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>Host image playground</h1>
+  <p id="meta">Loading…</p>
+  <p id="summary" class="summary"></p>
+</header>
+
+<section>
+  <h2>What the user sees</h2>
+  <p class="hint">Avatar (PNG) and name (SVG) from the host. The page knows only the alias.</p>
+  <div id="shown" class="shown"></div>
+</section>
+
+<section>
+  <h2>What product JS can read</h2>
+  <p class="hint">Safe: the probe did not get the private data. Leak: it did. Control: a probe that must read, to prove the probe works.</p>
+  <div id="results"></div>
+</section>
+
+<section>
+  <h2>Frames</h2>
+  <div id="frames" class="frames"></div>
+</section>
+
+<script src="probe.js"></script>
+</body>
+</html>
