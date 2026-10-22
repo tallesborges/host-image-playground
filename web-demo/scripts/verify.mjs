@@ -2,7 +2,7 @@
 // that every test gives the expected result. Exits 0 only if all checks pass.
 // Browsers: `npx playwright-core install chromium firefox webkit` once, if they are missing.
 // Screenshots go to test-results/ (or $OUT).
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { chromium, firefox, webkit } from "playwright-core";
 import * as local from "./local.mjs";
 
@@ -33,6 +33,19 @@ async function checkHeaders() {
   const script = await (await get("/embed/list.js")).text();
   check(!/Alice|Bob|Carol|Dan Demo|Eve Placeholder/.test(script), "list script has no contact data");
 
+  // Media: Range support (WebKit needs 206), CORS only on the control path, preflight for Range.
+  for (const file of ["clip.webm", "clip.mp4", "tone.wav"]) {
+    const r = await fetch(`${HOST}/img/c_7hq2m9/${file}`, { headers: { range: "bytes=0-1" } });
+    check(r.status === 206 && r.headers.get("content-range")?.startsWith("bytes 0-1/") && !r.headers.has("access-control-allow-origin"),
+      `host /img/<alias>/${file}: Range gives 206, no CORS header`);
+    const c = await fetch(`${HOST}/cors/c_7hq2m9/${file}`, { headers: { range: "bytes=0-1" } });
+    check(c.status === 206 && c.headers.get("access-control-allow-origin") === "*", `host /cors/<alias>/${file}: 206 with ACAO * (control)`);
+  }
+  const pre = await fetch(`${HOST}/cors/c_7hq2m9/clip.webm`, { method: "OPTIONS" });
+  check(pre.status === 204 && /range/i.test(pre.headers.get("access-control-allow-headers") ?? ""), "host /cors preflight allows the Range header");
+  const preImg = await fetch(`${HOST}/img/c_7hq2m9/clip.webm`, { method: "OPTIONS" });
+  check(preImg.status === 405 && !preImg.headers.has("access-control-allow-origin"), "host /img has no preflight grant");
+
   // Unknown aliases must look like real ones: same status and same size.
   const pngSize = async (path) => {
     const r = await get(path);
@@ -60,9 +73,35 @@ async function runBrowser(type) {
   await page.goto(PRODUCT);
   await page.waitForFunction(() => window.__runAll);
   await page.locator("#more").evaluate((d) => (d.open = true));
-  const summary = await page.evaluate(() => window.__runAll());
+  // A real click, so media gets the user activation that a real user gives.
+  await page.click("#runAll");
+  await page.waitForFunction(() => window.__summary, null, { timeout: 120000 });
+  const summary = await page.evaluate(() => window.__summary);
   for (const [card, rows] of Object.entries(summary))
-    for (const [row, { got, want }] of Object.entries(rows)) check(got === want, `${name}: ${card}/${row} = ${got} (want ${want})`);
+    for (const [row, { got, want, ok }] of Object.entries(rows)) check(ok, `${name}: ${card}/${row} = ${got} (want ${want})`);
+  const media = await page.evaluate(() =>
+    Object.fromEntries(MEDIA.map((c) => [c.id, {
+      file: cards[c.id].media && cards[c.id].media.currentSrc.split("/").pop().split("?")[0],
+      rows: Object.fromEntries(Object.entries(cards[c.id].rows).map(([k, r]) => [k, r.querySelector(".out").textContent])),
+    }])));
+  writeFileSync(`${OUT}/${type.name()}-media.json`, JSON.stringify({ browser: name, summary, media }, null, 2));
+
+  // Known and unknown aliases must give media with the same duration and size.
+  const meta = await page.evaluate(async (host) => {
+    const load = (tag, url) => new Promise((resolve) => {
+      const el = document.createElement(tag); el.preload = "metadata"; el.muted = true;
+      el.onloadedmetadata = () => resolve(`${el.duration.toFixed(2)}s ${el.videoWidth || 0}x${el.videoHeight || 0}`);
+      el.onerror = () => resolve("error");
+      el.src = url;
+    });
+    const v = document.createElement("video").canPlayType("video/webm") ? "clip.webm" : "clip.mp4";
+    return {
+      video: [await load("video", `${host}/img/c_7hq2m9/${v}`), await load("video", `${host}/img/unknown-alias/${v}`)],
+      audio: [await load("audio", `${host}/img/c_7hq2m9/tone.wav`), await load("audio", `${host}/img/unknown-alias/tone.wav`)],
+    };
+  }, HOST);
+  for (const [k, [a, u]] of Object.entries(meta))
+    check(a === u && a !== "error", `${name}: ${k} known and unknown alias have the same duration and size (${a} / ${u})`);
 
   const list = page.frameLocator("#listShot iframe");
   await list.locator("#q").fill("ali");
@@ -81,7 +120,8 @@ async function runBrowser(type) {
   const phone = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await phone.goto(PRODUCT);
   await phone.waitForFunction(() => window.__runAll);
-  await phone.evaluate(() => window.__runAll());
+  await phone.click("#runAll");
+  await phone.waitForFunction(() => window.__summary, null, { timeout: 120000 });
   const sideScroll = await phone.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   check(sideScroll <= 0, `${name}: no side scroll at 390 px (${sideScroll})`);
   await phone.screenshot({ path: `${OUT}/${slug}-390.png`, fullPage: true });

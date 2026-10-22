@@ -30,7 +30,9 @@
     <div class="legend">
       <span><span class="pill blocked">Blocked</span> The browser stops the read.</span>
       <span><span class="pill read">Readable</span> The page gets the file, the text, or the pixels.</span>
+      <span><span class="pill zero">Only zeros</span> The browser gives silence or black, not the content.</span>
       <span><span class="pill">No API</span> There is no standard way to try this.</span>
+      <span><span class="pill visible">Visible</span> The page can always see this.</span>
     </div>
   </div>
 
@@ -39,7 +41,14 @@
     The control is the same two images from this page's own origin. They must be readable. This shows that the tests can find a leak.</p>
   <div class="grid" id="grid-compare"></div>
 
-  <h2>2. Search and select (iframe idea only)</h2>
+  <h2>2. Video and audio</h2>
+  <p class="sect-note">The same test for <code>&lt;video&gt;</code> and <code>&lt;audio&gt;</code>, with synthetic files that have a known signal:
+    a video with a red and a blue half, and a 440 Hz tone. The tests try to get the file, a frame's pixels, or the audio samples.
+    "Only zeros" counts as blocked only if the same-origin control gives the real content in the same browser.
+    The page can always see the duration, the video size, the play time, and the events. Click a Run button or "Run all tests": audio plays only after a click, and you hear nothing.</p>
+  <div class="grid" id="grid-media"></div>
+
+  <h2>3. Search and select (iframe idea only)</h2>
   <p class="sect-note">The frame runs the search. When you select a contact, the frame sends only the contact alias to this page.
     This page can send two commands to the frame. The log checks each message for a name.
     An image cannot do this: it cannot run search or send events.</p>
@@ -63,7 +72,7 @@
     </section>
   </div>
 
-  <h2>3. IMG and iframe compared</h2>
+  <h2>4. IMG and iframe compared</h2>
   <p class="sect-note">"Tested" means that a test on this page checks it. "Host setting" means that the host sends it, but this page does not test it.</p>
   <table class="diff">
     <thead><tr><th>Topic</th><th>IMG idea</th><th>iframe idea</th></tr></thead>
@@ -81,7 +90,7 @@
   </table>
 
   <details id="more">
-    <summary>4. More controls</summary>
+    <summary>5. More controls</summary>
     <p class="sect-note">These cards show that the tests react to CORS and to the origin. CORS makes both images readable. CORS does not give access to a frame.</p>
     <div class="grid" id="grid-more"></div>
   </details>
@@ -92,10 +101,11 @@
     <p>The iframe idea follows <a href="https://github.com/pgherveou/iframe-playground">pgherveou/iframe-playground</a>:
       opaque handles, isolated frames, and messages that carry only handles. This page uses its own smaller implementation, not the code of that project.</p>
     <p>Scope: a normal browser and two origins. On workers.dev the two origins are on the same site; the tests depend on the origin, not the site.
-      This page does not test the native <code>truapi-host://</code> scheme, Android WebView, iOS WKWebView, or side channels such as timing.</p>
+      This page does not test native custom schemes, Android WebView, iOS WKWebView, other media formats, streaming (HLS, DASH, MSE), encrypted media, or side channels such as timing.</p>
   </footer>
 </div>
 <script src="/config.js"></script>
+<script src="/media.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

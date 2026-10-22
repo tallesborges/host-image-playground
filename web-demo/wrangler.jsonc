@@ -8,8 +8,8 @@
   "compatibility_date": "2026-09-01",
   "workers_dev": true,
   "preview_urls": false,
-  // Bundle the avatar PNG files as binary data.
-  "rules": [{ "type": "Data", "globs": ["**/*.png"], "fallthrough": false }],
+  // Bundle the avatar and media files as binary data.
+  "rules": [{ "type": "Data", "globs": ["**/*.png", "**/*.webm", "**/*.mp4", "**/*.wav"], "fallthrough": false }],
   "env": {
     "host": {
       "name": "host-image-demo-host",

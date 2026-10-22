@@ -46,7 +46,7 @@ const MORE = [
     note: "The CORS name image, loaded in a frame. CORS does not give access to a frame, so the read must stay blocked." },
 ];
 
-const LABEL = { read: "Readable", blocked: "Blocked", na: "No API", error: "Error" };
+const LABEL = { read: "Readable", blocked: "Blocked", na: "No API", error: "Error", ...MEDIA_LABEL };
 const bust = (u) => `${u}${u.includes("?") ? "&" : "?"}t=${Math.random().toString(36).slice(2)}`;
 const errText = (e) => `${e && e.name}: ${e && e.message}`;
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
@@ -198,6 +198,7 @@ const SCRIPT = { key: "script", name: "Run the list frame script on this page", 
 
 // Each row: { key, name, code, run(card), group? }.
 function rowsFor(c) {
+  if (c.mode === "video" || c.mode === "audio") return mediaRows(c);
   if (c.mode === "img") {
     const rows = [];
     for (const part of c.parts)
@@ -211,12 +212,24 @@ function rowsFor(c) {
 }
 const expectedFor = (c, a) => a.expectAlways || (c.expectOverride || {})[a.key] || c.expect;
 
+// true, false, or "pending". Some media rows also accept "na" or "zero" (c.alt). "zero" passes only
+// if the paired control gave real content, and "na" only if the control also had no API.
+function matchRow(c, a, got) {
+  if (got === expectedFor(c, a)) return true;
+  if (!((c.alt || {})[a.key] || []).includes(got)) return false;
+  if (!c.control) return true;
+  const ctl = cards[c.control] && cards[c.control].results[a.key];
+  if (!ctl) return "pending";
+  return got === "zero" ? ctl === "read" : ctl === got;
+}
+
 function expectText(c) {
-  if (c.expect === "blocked") return "Expected: blocked";
+  if (c.expect === "blocked") return c.alt ? "Expected: blocked or only zeros" : "Expected: blocked";
   return c.expectOverride ? "Expected: readable, except no-cors" : "Expected: readable";
 }
 
-const grids = { compare: document.getElementById("grid-compare"), more: document.getElementById("grid-more") };
+const grids = { compare: document.getElementById("grid-compare"), media: document.getElementById("grid-media"), more: document.getElementById("grid-more") };
+const MEDIA = mediaCards(HOST, ID);
 const cards = {};
 
 function loadImages(card) {
@@ -305,13 +318,14 @@ function buildCard(c, gridKey) {
     row.className = "row";
     row.innerHTML = `<div><div class="name">${esc(a.name)}</div><code>${esc(a.code)}</code></div>
       <div class="right"><span class="pill">Not run</span><button type="button">Run</button></div><div class="out"></div>`;
-    row.querySelector("button").onclick = () => runRow(card, a, row);
+    // prime() must run in the click handler, before any await, so the browser lets media play.
+    row.querySelector("button").onclick = () => { if (a.prime) a.prime(card); runRow(card, a, row); };
     card.rows[a.key] = row;
     el.appendChild(row);
   }
   grids[gridKey].appendChild(el);
   cards[c.id] = card;
-  card.ready = c.mode === "frame" ? loadFrame(card) : loadImages(card);
+  card.ready = c.mode === "frame" ? loadFrame(card) : c.mode === "img" ? loadImages(card) : loadMedia(card);
 }
 
 function showResult(row, r) {
@@ -335,10 +349,11 @@ function updateVerdict(card) {
   const list = rowsFor(card.c);
   const ran = list.filter((a) => card.results[a.key]);
   if (!ran.length) { card.verdict.textContent = "Not run"; card.verdict.className = "verdict"; return; }
-  const match = ran.every((a) => card.results[a.key] === expectedFor(card.c, a));
+  const m = ran.map((a) => matchRow(card.c, a, card.results[a.key]));
   const count = ran.length < list.length ? ` (${ran.length} of ${list.length} run)` : "";
-  card.verdict.textContent = (match ? "✓ As expected" : "✗ Not as expected") + count;
-  card.verdict.className = `verdict ${match ? "ok" : "bad"}`;
+  if (m.includes(false)) { card.verdict.textContent = `✗ Not as expected${count}`; card.verdict.className = "verdict bad"; }
+  else if (m.includes("pending")) { card.verdict.textContent = `Waiting for the control${count}`; card.verdict.className = "verdict"; }
+  else { card.verdict.textContent = `✓ As expected${count}`; card.verdict.className = "verdict ok"; }
 }
 
 // Section 2: contact list frame and messages.
@@ -391,23 +406,31 @@ document.querySelector("#listDomRow button").onclick = () =>
   showResult(document.getElementById("listDomRow"), readFrameDocument(listFrame, ALL_NAMES));
 
 async function runAll() {
+  window.__summary = null;
+  const all = [...COMPARE, ...MEDIA, ...MORE];
+  // Start media that needs a click now, before the first await.
+  for (const c of all) for (const a of rowsFor(c)) if (a.prime) a.prime(cards[c.id]);
+  for (const c of all) for (const a of rowsFor(c)) await runRow(cards[c.id], a, cards[c.id].rows[a.key]);
   const summary = {};
-  for (const c of [...COMPARE, ...MORE]) {
+  for (const c of all) {
+    updateVerdict(cards[c.id]);
     summary[c.id] = {};
     for (const a of rowsFor(c)) {
-      const got = await runRow(cards[c.id], a, cards[c.id].rows[a.key]);
-      summary[c.id][a.key] = { got, want: expectedFor(c, a) };
+      const got = cards[c.id].results[a.key];
+      summary[c.id][a.key] = { got, want: [expectedFor(c, a), ...((c.alt || {})[a.key] || [])].join("|"), ok: matchRow(c, a, got) === true };
     }
   }
   const lr = readFrameDocument(listFrame, ALL_NAMES);
   showResult(document.getElementById("listDomRow"), lr);
-  summary.list = { dom: { got: lr.status, want: "blocked" } };
+  summary.list = { dom: { got: lr.status, want: "blocked", ok: lr.status === "blocked" } };
+  window.__summary = summary;
   return summary;
 }
 
 function build() {
   Object.values(grids).forEach((g) => g.replaceChildren());
   COMPARE.forEach((c) => buildCard(c, "compare"));
+  MEDIA.forEach((c) => buildCard(c, "media"));
   MORE.forEach((c) => buildCard(c, "more"));
   buildList();
 }

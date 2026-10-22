@@ -6,6 +6,7 @@
     "dev": "node scripts/local.mjs",
     "verify": "node scripts/verify.mjs",
     "avatars": "node scripts/make-avatars.mjs",
+    "media": "node scripts/make-media.mjs",
     "deploy": "wrangler deploy --env host && wrangler deploy --env product"
   },
   "devDependencies": {

@@ -61,6 +61,11 @@ h2 { margin: 32px 0 4px; font-size: 17px; font-weight: 650; }
 .pill { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--gray-bg); color: var(--dim); white-space: nowrap; }
 .read .pill, .pill.read { background: var(--red-bg); color: var(--red); }
 .blocked .pill, .pill.blocked { background: var(--green-bg); color: var(--green); }
+.zero .pill, .pill.zero { background: var(--green-bg); color: var(--green); }
+.visible .pill, .pill.visible { background: #e6eef8; color: #2f5f96; }
+.noplay .pill, .unsupported .pill { background: #fbf1d9; color: #8a5a00; }
+.shot video, .shot audio { display: block; max-width: 100%; }
+.shot audio { width: 100%; }
 mark { background: var(--red-bg); color: var(--red); font-weight: 600; padding: 0 2px; }
 table.diff { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 13px; }
 table.diff th, table.diff td { text-align: left; vertical-align: top; padding: 9px 12px; border-top: 1px solid var(--line); }
