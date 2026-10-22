@@ -1,0 +1,2 @@
+simulator=iPhone 17 runtime=com.apple.CoreSimulator.SimRuntime.iOS-26-4
+Xcode 26.4 Build version 17E192 
