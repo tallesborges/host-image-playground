@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "host-image-playground"
-include(":shared")
+include(":shared", ":androidApp")
