@@ -284,6 +284,27 @@ Product page `https://demo-product.dot` on Android, `polkadot://demo-product.dot
 - **Native apps (`androidApp/`, `iosApp/`)**: one app, no network. The product page and the host data are different origins inside the same web view. The page is on `https://demo-product.dot` (Android) or `polkadot://demo-product.dot` (iOS); diagnostic scenarios also use `https://product.test` and `file://`. The data is on `truapi-host://`, plus `https://host.test` on Android.
 - **Web demo ([`web-demo/`](web-demo/))**: a separate browser demo. It uses two HTTPS origins on Cloudflare Workers, one for the product page and one for the host. It shows the normal browser cross-origin rules. It says nothing about native custom schemes. The native apps do not include it.
 
+### Web demo: video and audio (browser only)
+
+The web demo also tests `<video>` and `<audio>`. The native apps do not. The files are synthetic: a 2 s 160x90 video with a red and a blue half (MP4/H.264 and WebM/VP8), and a 2 s 440 Hz tone (WAV). Each test has two controls: the same file from the page's own origin, and from the host with `Access-Control-Allow-Origin: *`. Both controls must give the real content.
+
+| Read from the host, no CORS | Chromium 156 | Firefox 157 | WebKit 27.2 |
+|---|---|---|---|
+| `fetch`, XHR, `no-cors` fetch | blocked | blocked | blocked |
+| Video frame: canvas pixels, `toDataURL` | blocked | blocked | blocked |
+| Video frame: WebCodecs `VideoFrame` | blocked | blocked | blocked |
+| Video `captureStream()` | blocked | blocked | no API |
+| Audio through Web Audio `createMediaElementSource` | only zeros | only zeros | only zeros |
+| Audio `captureStream()` into Web Audio | only zeros | only zeros | no API |
+
+- "Only zeros" means the element played, but every sample was 0. It counts as blocked only because the same-origin control in the same browser gave the tone. If the element does not play, the result is "did not play", not blocked.
+- "No API" means the browser has no such function. Then neither the test nor the control can run.
+- The page can always see the duration, the video size, `currentTime`, and media events. The host gives an unknown alias a placeholder with the same size and duration.
+- Firefox: `mozCaptureStream()` called after a looping element restarts gives silence even for a same-origin file. The demo captures when playback starts.
+- Tested with headless Playwright browsers on macOS. Not tested: other formats, streaming (HLS, DASH, MSE), encrypted media, timing side channels.
+
+Run the web demo checks with `cd web-demo && bun install && bun run verify`. Make the media files again with `bun run media` (needs `ffmpeg` with libvpx and libx264).
+
 ## Image formats
 
 - **Avatar: PNG.** A fixed 64x64 image that stands in for a photo. The shared code makes it with a small PNG encoder (`AvatarPng.kt`), so both apps serve the same bytes.
