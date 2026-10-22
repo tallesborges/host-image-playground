@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Can the page read the contact? IMG and iframe</title>
+<meta name="description" content="A browser test: can product JavaScript read a contact avatar (PNG) and name (SVG) that a host shows as images or as a frame?">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>Can the page read the contact?</h1>
+  <p class="lead">This page is the product. It shows the same synthetic contact, <b>Alice Example</b>, in two ways.
+    A different origin, the <b>host</b>, owns the contact data. The page gets only an opaque alias.
+    With the <b>IMG idea</b>, the page shows two images from the host: the avatar as a <b>PNG picture</b> and the name as <b>SVG text</b>.
+    With the <b>iframe idea</b>, the page embeds one frame from the host.
+    Each test runs JavaScript on this page and tries to get the avatar or the name.</p>
+  <p class="notice">Synthetic data and public URLs. This demo tests only one thing: what JavaScript on this page can read in a browser.
+    It is not access control. Anyone can open the host URLs directly, for example with a browser or curl.
+    In a real app, the host gives each product its own aliases. The host resolves an alias only together with the product that it knows is running, not with a product id in the URL.</p>
+  <div class="facts">
+    <span>Product page</span><code id="pageOrigin"></code>
+    <span>Host</span><code id="hostOrigin"></code>
+    <span>Browser</span><code id="ua"></code>
+  </div>
+
+  <div class="bar">
+    <button class="primary" id="runAll" type="button">Run all tests</button>
+    <button id="reset" type="button">Reset</button>
+    <div class="legend">
+      <span><span class="pill blocked">Blocked</span> The browser stops the read.</span>
+      <span><span class="pill read">Readable</span> The page gets the file, the text, or the pixels.</span>
+      <span><span class="pill">No API</span> There is no standard way to try this.</span>
+    </div>
+  </div>
+
+  <h2>1. Same contact, two ways</h2>
+  <p class="sect-note">Both show the avatar and the name to the user. The question is: can this page's JavaScript get them?
+    The control is the same two images from this page's own origin. They must be readable. This shows that the tests can find a leak.</p>
+  <div class="grid" id="grid-compare"></div>
+
+  <h2>2. Search and select (iframe idea only)</h2>
+  <p class="sect-note">The frame runs the search. When you select a contact, the frame sends only the contact alias to this page.
+    This page can send two commands to the frame. The log checks each message for a name.
+    An image cannot do this: it cannot run search or send events.</p>
+  <div class="grid">
+    <section class="card test">
+      <div class="head"><div class="kind">Test</div><div class="title">Contact list from the host</div>
+        <p class="note">Type a name in the search field and select a contact. Then look at what this page received.</p>
+        <div class="url" id="listUrl"></div></div>
+      <div class="view">
+        <div class="shot" id="listShot"></div>
+        <div class="btns"><button id="focusSearch" type="button">Focus search</button><button id="clearSel" type="button">Clear selection</button></div>
+      </div>
+      <div class="row" id="listDomRow"><div><div class="name">Read the list document</div><code>frame.contentWindow.document.body.innerText</code></div>
+        <div class="right"><span class="pill">Not run</span><button type="button">Run</button></div><div class="out"></div></div>
+    </section>
+    <section class="card">
+      <div class="head"><div class="kind">Messages</div><div class="title">What this page received</div>
+        <p class="note">The page checks each message for a contact name or username.</p></div>
+      <div class="expect"><span>Expected: aliases only, no names</span><span class="verdict" id="msgVerdict">No messages yet</span></div>
+      <div class="view"><pre class="log" id="msgLog"></pre></div>
+    </section>
+  </div>
+
+  <h2>3. IMG and iframe compared</h2>
+  <p class="sect-note">"Tested" means that a test on this page checks it. "Host setting" means that the host sends it, but this page does not test it.</p>
+  <table class="diff">
+    <thead><tr><th>Topic</th><th>IMG idea</th><th>iframe idea</th></tr></thead>
+    <tbody>
+      <tr><td>What the page knows</td><td>Two image URLs with an opaque alias.</td><td>The frame URL with the same alias. In section 2, the selected alias.</td></tr>
+      <tr><td>How the contact is shown</td><td>Avatar: a PNG picture. Name: SVG text in an image.</td><td>One HTML document with the same PNG avatar and the name as text.</td></tr>
+      <tr><td>Page JavaScript reads the avatar or the name</td><td>Blocked: no CORS header, and the canvas is tainted. <span class="src">Tested for the PNG and the SVG.</span></td><td>Blocked: same-origin policy, and no CORS header. <span class="src">Tested.</span></td></tr>
+      <tr><td>Who can show it</td><td>Any page that knows the URL.</td><td>Only the product origin: CSP <code>frame-ancestors</code>. <span class="src">Host setting.</span></td></tr>
+      <tr><td>Interaction</td><td>None. They are pictures.</td><td>Search, select, and commands with <code>postMessage</code>. Only aliases leave the frame. <span class="src">Section 2.</span></td></tr>
+      <tr><td>Size the page can see</td><td>The same for every contact, also for an unknown alias: avatar 112 × 112, name 240 × 48.</td><td>The page sets the size: 320 × 88.</td></tr>
+      <tr><td>Avatar file</td><td>Any page that knows the URL can show it, but cannot read it.</td><td>The host sends <code>Cross-Origin-Resource-Policy: same-origin</code>. Other pages cannot show it. <span class="src">Tested.</span></td></tr>
+      <tr><td>Screen readers</td><td>Text in an image is not read. The page sets <code>alt</code>, but it does not know the name. <span class="src">Not tested.</span></td><td>Real HTML text in the frame. <span class="src">Not tested.</span></td></tr>
+      <tr><td>Same for both</td><td colspan="2">The user, screenshots, extensions, and HTTP clients outside the browser can see the avatar and the name. An opaque alias is not access control.</td></tr>
+    </tbody>
+  </table>
+
+  <details id="more">
+    <summary>4. More controls</summary>
+    <p class="sect-note">These cards show that the tests react to CORS and to the origin. CORS makes both images readable. CORS does not give access to a frame.</p>
+    <div class="grid" id="grid-more"></div>
+  </details>
+
+  <footer>
+    <p>Results come from your browser when you click a button. Nothing is hard-coded.
+      The page has the test names only to check the results. A real product does not have them.</p>
+    <p>The iframe idea follows <a href="https://github.com/pgherveou/iframe-playground">pgherveou/iframe-playground</a>:
+      opaque handles, isolated frames, and messages that carry only handles. This page uses its own smaller implementation, not the code of that project.</p>
+    <p>Scope: a normal browser and two origins. On workers.dev the two origins are on the same site; the tests depend on the origin, not the site.
+      This page does not test the native <code>truapi-host://</code> scheme, Android WebView, iOS WKWebView, or side channels such as timing.</p>
+  </footer>
+</div>
+<script src="/config.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

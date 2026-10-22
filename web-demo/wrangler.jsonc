@@ -1,0 +1,32 @@
+// One script, two Workers. Each Worker has its own workers.dev origin, so the
+// product page and the host are cross-origin. Deploy both with `bun run deploy`.
+// To deploy to another account, change the two origins below to your workers.dev subdomain.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "host-image-demo",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-09-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  // Bundle the avatar PNG files as binary data.
+  "rules": [{ "type": "Data", "globs": ["**/*.png"], "fallthrough": false }],
+  "env": {
+    "host": {
+      "name": "host-image-demo-host",
+      "vars": {
+        "ROLE": "host",
+        "PRODUCT_ORIGIN": "https://host-image-demo-product.tallesborges.workers.dev",
+        "HOST_ORIGIN": "https://host-image-demo-host.tallesborges.workers.dev"
+      }
+    },
+    "product": {
+      "name": "host-image-demo-product",
+      "assets": { "directory": "./public" },
+      "vars": {
+        "ROLE": "product",
+        "PRODUCT_ORIGIN": "https://host-image-demo-product.tallesborges.workers.dev",
+        "HOST_ORIGIN": "https://host-image-demo-host.tallesborges.workers.dev"
+      }
+    }
+  }
+}

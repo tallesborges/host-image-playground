@@ -1,0 +1,15 @@
+{
+  "name": "host-image-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/local.mjs",
+    "verify": "node scripts/verify.mjs",
+    "avatars": "node scripts/make-avatars.mjs",
+    "deploy": "wrangler deploy --env host && wrangler deploy --env product"
+  },
+  "devDependencies": {
+    "playwright-core": "1.64.1",
+    "wrangler": "4.152.0"
+  }
+}
