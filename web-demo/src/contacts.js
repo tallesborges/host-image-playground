@@ -59,6 +59,7 @@ input{width:100%;font:inherit;padding:8px 10px;border:1px solid #d6d6d1;border-r
 ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
 li button{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;padding:6px 8px;border-radius:8px;cursor:pointer}
 li button:hover{background:#f4f4f1}li button[aria-pressed=true]{background:#e8f0fa;outline:1px solid #2f6fb0}
+li button:focus-visible{outline:2px solid #1d1d1b;outline-offset:2px}li button[aria-pressed=true]:focus-visible{border:1px solid #2f6fb0}
 li img{width:32px;height:32px;border-radius:50%}li .name{display:block;font-size:14px}li .user{display:block;font-size:12px}
 .empty{color:#6b6b66;padding:8px}</style>
 <input id="q" type="search" placeholder="Search contacts" autocomplete="off" aria-label="Search contacts">
