@@ -2,11 +2,17 @@
 
 A native host app shows private contact data in an untrusted product web page.
 The page can show the avatar (PNG) and the name (SVG), but its JavaScript cannot read them.
-Two small apps test this: Android with `WebView`, and iOS with `WKWebView`. They share Kotlin Multiplatform code.
+Two small apps test this idea: Android with `WebView`, and iOS with `WKWebView`. The two apps share Kotlin Multiplatform code.
+
+Terms:
+
+- **Alias:** a name that the host gives to a product for one contact. The alias works only in that product.
+- **Nova:** the Polkadot app. The playground copies how the Nova hosts load a product.
+- **`nova` scenario:** the main Android scenario. It loads the product page the same way as Nova. The iOS name is `ios-nova`.
 
 ## Demo
 
-Each demo shows both images. Every read is blocked: 0 leaks.
+Each demo shows both images. The page cannot read them, so each demo has 0 leaks.
 Recorded on 2026-10-22 on an Android 16 emulator and on an iPhone 17 simulator with iOS 26.4.
 
 | Android | iOS |
@@ -19,7 +25,7 @@ The recording of an earlier build is in [docs/details.md](docs/details.md#demo).
 
 1. Load the product page from a different origin than the host data.
 2. Never send the `Access-Control-Allow-Origin` header on private data.
-3. On Android, never turn on `allowUniversalAccessFromFileURLs`.
+3. On Android, never enable `allowUniversalAccessFromFileURLs`.
 4. Use the same image size and the same status for every alias.
 5. Do not put the name in `alt` text or other DOM text.
 
@@ -27,7 +33,7 @@ The recording of an earlier build is in [docs/details.md](docs/details.md#demo).
 
 ## Results
 
-A leak is a probe that reads private data. The negative cases must leak. They prove that the probes work.
+A leak is a probe that reads private data. The negative cases must leak. These cases prove that the probes work.
 
 | Platform | Main scenario | Negative cases | App tests |
 |---|---|---|---|
@@ -45,8 +51,11 @@ You need:
 - The Android SDK with platform 36. Set its path in `local.properties`.
 - A running Android emulator or device.
 - Xcode 26 with an iOS simulator, and `jq`.
+- Bun, to run the web demo checks.
+- The Playwright browsers Chromium, Firefox, and WebKit, to run the web demo checks.
 
 The first iOS build downloads Kotlin/Native.
+To install the Playwright browsers, run `npx playwright-core install chromium firefox webkit` once.
 
 ```sh
 # Android: shared tests, build, device tests
@@ -58,11 +67,16 @@ IOS_SIMULATOR="iPhone 17" ./run-ios-tests.sh
 
 Each script exits 0 only if all tests pass. Each script copies the results to `results/`.
 
-To start an app by hand:
+To start an app manually:
 
 - **Android:** install `androidApp/build/outputs/apk/debug/androidApp-debug.apk`. The app opens the `nova` scenario.
 - **iOS:** open `iosApp/iosApp.xcodeproj` and run the `iosApp` scheme.
-- **Web demo:** run `cd web-demo && bun install && bun run verify`.
+
+Run the web demo checks:
+
+```sh
+cd web-demo && bun install && bun run verify
+```
 
 ## Layout
 
@@ -78,6 +92,7 @@ To start an app by hand:
 - Other WebView and iOS versions, real iPhones, and physical Android devices.
 - The real Nova hosts. The playground copies their loading code but does not run them.
 - Timing side channels.
+- Spectre-class reads in the shared renderer process.
 - Alias creation and real contact storage.
 
 These tests check only the listed probes. They do not prove that the data is private in every case.
